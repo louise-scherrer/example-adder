@@ -63,7 +63,7 @@ class DifferentialActionModelFreeFwdDynamicsExtForcesTpl : public DifferentialAc
   DifferentialActionModelFreeFwdDynamicsExtForcesTpl(boost::shared_ptr<StateMultibody> state,
                                             boost::shared_ptr<ActuationModelAbstract> actuation,
                                             boost::shared_ptr<CostModelSum> costs,
-                                            boost::shared_ptr<ForceAlignedVector> extforces);
+                                            const Eigen::Ref<const VectorXs>& extforces); // ptit test au lieu de boost::shared_ptr<ForceAlignedVector> extforces 
   virtual ~DifferentialActionModelFreeFwdDynamicsExtForcesTpl();
 
   virtual void calc(const boost::shared_ptr<DifferentialActionDataAbstract>& data, const Eigen::Ref<const VectorXs>& x,
@@ -99,7 +99,7 @@ class DifferentialActionModelFreeFwdDynamicsExtForcesTpl : public DifferentialAc
   pinocchio::ModelTpl<Scalar>& pinocchio_;
   bool with_armature_;
   VectorXs armature_;
-  boost::shared_ptr<ForceAlignedVector> extforces_;
+  ForceAlignedVector extforces_; // does is have to be a shared pointer?
 };
 
 template <typename _Scalar>

@@ -26,7 +26,7 @@ namespace example {
 template <typename Scalar>
 DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::DifferentialActionModelFreeFwdDynamicsExtForcesTpl(
     boost::shared_ptr<StateMultibody> state, boost::shared_ptr<ActuationModelAbstract> actuation,
-    boost::shared_ptr<CostModelSum> costs, boost::shared_ptr<ForceAlignedVector> extforces)
+    boost::shared_ptr<CostModelSum> costs, const Eigen::Ref<const VectorXs>& extforces)
     : Base(state, actuation->get_nu(), costs->get_nr()),
       actuation_(actuation),
       costs_(costs),
