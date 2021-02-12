@@ -26,13 +26,13 @@
 #include "crocoddyl/multibody/states/multibody.hpp"
 #include "crocoddyl/core/utils/exception.hpp"
 
+#include "pinocchio/fwd.hpp" // not sure if necessary #TO CHECK
+#include "pinocchio/container/aligned-vector.hpp" // not sure if necessary #TO CHECK
+
 namespace gepetto {
 namespace example {
 
 using namespace crocoddyl;
-
-//template <typename _Scalar>
-//class DifferentialActionModelFreeFwdDynamicsExtForcesTpl : public DifferentialActionModelAbstractTpl<_Scalar> 
 
 // forward declarations
 template <typename Scalar> // why not _Scalar here?
@@ -58,12 +58,13 @@ class DifferentialActionModelFreeFwdDynamicsExtForcesTpl : public DifferentialAc
   typedef typename MathBase::VectorXs VectorXs;
   typedef typename MathBase::MatrixXs MatrixXs;
   
-  typedef pinocchio::container::aligned_vector<pinocchio::ForceTpl<Scalar> > ForceAlignedVector; // is typename needed? probably not
+  typedef pinocchio::ForceTpl<Scalar> Force;
+  typedef PINOCCHIO_ALIGNED_STD_VECTOR(Force) ForceAlignedVector; // is typename needed? probably not
 
   DifferentialActionModelFreeFwdDynamicsExtForcesTpl(boost::shared_ptr<StateMultibody> state,
                                             boost::shared_ptr<ActuationModelAbstract> actuation,
                                             boost::shared_ptr<CostModelSum> costs,
-                                            const Eigen::Ref<const VectorXs>& extforces); // ptit test au lieu de boost::shared_ptr<ForceAlignedVector> extforces 
+                                            const ForceAlignedVector& extforces); 
   virtual ~DifferentialActionModelFreeFwdDynamicsExtForcesTpl();
 
   virtual void calc(const boost::shared_ptr<DifferentialActionDataAbstract>& data, const Eigen::Ref<const VectorXs>& x,

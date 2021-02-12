@@ -8,15 +8,20 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "example-adder/python.hpp"
+
+
+#include "python/crocoddyl/multibody/multibody.hpp"
+#include "python/crocoddyl/core/diff-action-base.hpp"
 #include "example-adder/ext-forces.hpp"
 
-// should i include /bindings/python/utils/std-aligned-vector.hpp from pinocchio?
+#include "pinocchio/bindings/python/fwd.hpp"
+
 
 #include <boost/python.hpp>
 
 namespace gepetto {
 namespace example {
-
+// should I add using namespace crocoddyl?
 namespace bp = boost::python;
 
 void exposeDifferentialActionFreeFwdDynamicsExtForces() {
@@ -34,7 +39,7 @@ void exposeDifferentialActionFreeFwdDynamicsExtForces() {
 
       bp::init<boost::shared_ptr<StateMultibody>, boost::shared_ptr<ActuationModelAbstract>,
                boost::shared_ptr<CostModelSum>, 
-               const Eigen::Ref<const Eigen::VectorXd>& >(bp::args("self", "state", "actuation", "costs", "extforces"),
+               PINOCCHIO_ALIGNED_STD_VECTOR(Force) >(bp::args("self", "state", "actuation", "costs", "extforces"),
                                                  "Initialize the free forward-dynamics action model.\n\n"
                                                  ":param state: multibody state\n"
                                                  ":param actuation: abstract actuation model\n"

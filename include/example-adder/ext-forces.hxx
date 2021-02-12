@@ -9,7 +9,7 @@
 
 #include "crocoddyl/core/utils/exception.hpp"
 
-// #include "crocoddyl/multibody/actions/free-fwddyn-ext-forces.hpp"
+#include "example-adder/ext-forces.hpp"
 
 #include <pinocchio/algorithm/aba.hpp>
 #include <pinocchio/algorithm/aba-derivatives.hpp>
@@ -26,7 +26,7 @@ namespace example {
 template <typename Scalar>
 DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::DifferentialActionModelFreeFwdDynamicsExtForcesTpl(
     boost::shared_ptr<StateMultibody> state, boost::shared_ptr<ActuationModelAbstract> actuation,
-    boost::shared_ptr<CostModelSum> costs, const Eigen::Ref<const VectorXs>& extforces)
+    boost::shared_ptr<CostModelSum> costs, const ForceAlignedVector& extforces)
     : Base(state, actuation->get_nu(), costs->get_nr()),
       actuation_(actuation),
       costs_(costs),
@@ -38,7 +38,7 @@ DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::DifferentialActionMo
     throw_pretty("Invalid argument: "
                  << "Costs doesn't have the same control dimension (it should be " + std::to_string(nu_) + ")");
   }
-  if (static_cast<std::size_t>(extforces_) != pinocchio_.njoints) {
+  if (static_cast<std::size_t>(extforces_.size()) != pinocchio_.njoints) {
     throw_pretty("Invalid argument: "
                  << "extforces is of wrong dimension: it should be " + std::to_string(pinocchio_.njoints) + ")");
   }
