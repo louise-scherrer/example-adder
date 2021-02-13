@@ -32,18 +32,18 @@ DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::DifferentialActionMo
       costs_(costs),
       pinocchio_(*state->get_pinocchio().get()),
       with_armature_(true),
-      armature_(VectorXs::Zero(state->get_nv())),
+      armature_(VectorXs::Zero((long)state->get_nv())),
       extforces_(extforces) {
   if (costs_->get_nu() != nu_) {
     throw_pretty("Invalid argument: "
                  << "Costs doesn't have the same control dimension (it should be " + std::to_string(nu_) + ")");
   }
-  if (static_cast<std::size_t>(extforces_.size()) != pinocchio_.njoints) {
+  if (static_cast<int>(extforces_.size()) != pinocchio_.njoints) {
     throw_pretty("Invalid argument: "
                  << "extforces is of wrong dimension: it should be " + std::to_string(pinocchio_.njoints) + ")");
   }
-  Base::set_u_lb(Scalar(-1.) * pinocchio_.effortLimit.tail(nu_));
-  Base::set_u_ub(Scalar(+1.) * pinocchio_.effortLimit.tail(nu_));
+  Base::set_u_lb(Scalar(-1.) * pinocchio_.effortLimit.tail((long)nu_));
+  Base::set_u_ub(Scalar(+1.) * pinocchio_.effortLimit.tail((long)nu_));
 }
 
 template <typename Scalar>
@@ -63,8 +63,8 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calc(
   }
 
   Data* d = static_cast<Data*>(data.get());
-  const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> q = x.head(state_->get_nq());
-  const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> v = x.tail(state_->get_nv());
+  const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> q = x.head((long)state_->get_nq());
+  const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> v = x.tail((long)state_->get_nv());
 
   actuation_->calc(d->multibody.actuation, x, u);
 
@@ -100,8 +100,8 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calcDiff(
                  << "u has wrong dimension (it should be " + std::to_string(nu_) + ")");
   }
 
-  const std::size_t& nv = state_->get_nv();
-  const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> q = x.head(state_->get_nq());
+  const long& nv = (long)state_->get_nv();
+  const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> q = x.head((long)state_->get_nq());
   const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> v = x.tail(nv);
 
   Data* d = static_cast<Data*>(data.get());
@@ -110,7 +110,7 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calcDiff(
 
   // Computing the dynamics derivatives
   if (with_armature_) {
-    pinocchio::computeABADerivatives(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau, 
+    pinocchio::computeABADerivatives(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau,
                                      extforces_, d->Fx.leftCols(nv),
                                      d->Fx.rightCols(nv), d->pinocchio.Minv);
     d->Fx.noalias() += d->pinocchio.Minv * d->multibody.actuation->dtau_dx;
@@ -157,18 +157,18 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::quasiStatic(
   }
   // Static casting the data
   Data* d = static_cast<Data*>(data.get());
-  const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> q = x.head(state_->get_nq());
+  const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> q = x.head((long)state_->get_nq());
 
   // Check the velocity input is zero
-  assert_pretty(x.tail(state_->get_nv()).isZero(), "The velocity input should be zero for quasi-static to work.");
+  assert_pretty(x.tail((long)state_->get_nv()).isZero(), "The velocity input should be zero for quasi-static to work.");
 
   d->pinocchio.tau =
-      pinocchio::rnea(pinocchio_, d->pinocchio, q, VectorXs::Zero(state_->get_nv()), 
-                      VectorXs::Zero(state_->get_nv()), extforces_);
+      pinocchio::rnea(pinocchio_, d->pinocchio, q, VectorXs::Zero((long)state_->get_nv()),
+                      VectorXs::Zero((long)state_->get_nv()), extforces_);
 
-  d->tmp_xstatic.head(state_->get_nq()) = q;
-  actuation_->calc(d->multibody.actuation, d->tmp_xstatic, VectorXs::Zero(nu_));
-  actuation_->calcDiff(d->multibody.actuation, d->tmp_xstatic, VectorXs::Zero(nu_));
+  d->tmp_xstatic.head((long)state_->get_nq()) = q;
+  actuation_->calc(d->multibody.actuation, d->tmp_xstatic, VectorXs::Zero((long)nu_));
+  actuation_->calcDiff(d->multibody.actuation, d->tmp_xstatic, VectorXs::Zero((long)nu_));
 
   u.noalias() = pseudoInverse(d->multibody.actuation->dtau_du) * d->pinocchio.tau;
   d->pinocchio.tau.setZero();

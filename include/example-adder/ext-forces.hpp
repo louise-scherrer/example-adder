@@ -13,11 +13,10 @@
 
 #include <stdexcept>
 
-#include "crocoddyl/core/fwd.hpp"
-#include "crocoddyl/core/action-base.hpp" // what is that?
-#include "crocoddyl/core/states/euclidean.hpp"
+#ifdef PINOCCHIO_WITH_CPPAD_SUPPORT  // TODO(cmastalli): Removed after merging Pinocchio v.2.4.8
+#include <pinocchio/codegen/cppadcg.hpp>
+#endif
 
-// Pasting all those already there in the free-fwddyn DAM
 #include "crocoddyl/multibody/fwd.hpp"
 #include "crocoddyl/core/diff-action-base.hpp"
 #include "crocoddyl/core/costs/cost-sum.hpp"
@@ -26,21 +25,12 @@
 #include "crocoddyl/multibody/states/multibody.hpp"
 #include "crocoddyl/core/utils/exception.hpp"
 
-#include "pinocchio/fwd.hpp" // not sure if necessary #TO CHECK
-#include "pinocchio/container/aligned-vector.hpp" // not sure if necessary #TO CHECK
+#include "example-adder/fwd.hpp"
 
 namespace gepetto {
 namespace example {
 
 using namespace crocoddyl;
-
-// forward declarations
-template <typename Scalar> // why not _Scalar here?
-class DifferentialActionModelFreeFwdDynamicsExtForcesTpl;
-template <typename Scalar>
-struct DifferentialActionDataFreeFwdDynamicsExtForcesTpl;
-typedef DifferentialActionModelFreeFwdDynamicsExtForcesTpl<double> DifferentialActionModelFreeFwdDynamicsExtForces;
-typedef DifferentialActionDataFreeFwdDynamicsExtForcesTpl<double> DifferentialActionDataFreeFwdDynamicsExtForces;
 
 template <typename _Scalar>
 class DifferentialActionModelFreeFwdDynamicsExtForcesTpl : public DifferentialActionModelAbstractTpl<_Scalar> {
@@ -48,31 +38,29 @@ class DifferentialActionModelFreeFwdDynamicsExtForcesTpl : public DifferentialAc
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   typedef _Scalar Scalar;
-  typedef DifferentialActionDataAbstractTpl<Scalar> DifferentialActionDataAbstract;
   typedef DifferentialActionModelAbstractTpl<Scalar> Base;
   typedef DifferentialActionDataFreeFwdDynamicsExtForcesTpl<Scalar> Data;
   typedef MathBaseTpl<Scalar> MathBase;
   typedef CostModelSumTpl<Scalar> CostModelSum;
   typedef StateMultibodyTpl<Scalar> StateMultibody;
   typedef ActuationModelAbstractTpl<Scalar> ActuationModelAbstract;
+  typedef DifferentialActionDataAbstractTpl<Scalar> DifferentialActionDataAbstract;
   typedef typename MathBase::VectorXs VectorXs;
   typedef typename MathBase::MatrixXs MatrixXs;
-  
-  typedef pinocchio::ForceTpl<Scalar> Force;
+
   typedef PINOCCHIO_ALIGNED_STD_VECTOR(Force) ForceAlignedVector; // is typename needed? probably not
 
   DifferentialActionModelFreeFwdDynamicsExtForcesTpl(boost::shared_ptr<StateMultibody> state,
                                             boost::shared_ptr<ActuationModelAbstract> actuation,
                                             boost::shared_ptr<CostModelSum> costs,
-                                            const ForceAlignedVector& extforces); 
+                                            const ForceAlignedVector& extforces);
   virtual ~DifferentialActionModelFreeFwdDynamicsExtForcesTpl();
 
   virtual void calc(const boost::shared_ptr<DifferentialActionDataAbstract>& data, const Eigen::Ref<const VectorXs>& x,
                     const Eigen::Ref<const VectorXs>& u);
-  virtual void calcDiff(const boost::shared_ptr<DifferentialActionDataAbstract>& data, const Eigen::Ref<const VectorXs>& x,
-                        const Eigen::Ref<const VectorXs>& u);
+  virtual void calcDiff(const boost::shared_ptr<DifferentialActionDataAbstract>& data,
+                        const Eigen::Ref<const VectorXs>& x, const Eigen::Ref<const VectorXs>& u);
   virtual boost::shared_ptr<DifferentialActionDataAbstract> createData();
-
   virtual bool checkData(const boost::shared_ptr<DifferentialActionDataAbstract>& data);
 
   virtual void quasiStatic(const boost::shared_ptr<DifferentialActionDataAbstract>& data, Eigen::Ref<VectorXs> u,
@@ -106,23 +94,11 @@ class DifferentialActionModelFreeFwdDynamicsExtForcesTpl : public DifferentialAc
 template <typename _Scalar>
 struct DifferentialActionDataFreeFwdDynamicsExtForcesTpl : public DifferentialActionDataAbstractTpl<_Scalar> {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
   typedef _Scalar Scalar;
   typedef MathBaseTpl<Scalar> MathBase;
   typedef DifferentialActionDataAbstractTpl<Scalar> Base;
   typedef typename MathBase::VectorXs VectorXs;
   typedef typename MathBase::MatrixXs MatrixXs;
-
-  using Base::cost;
-  using Base::Fu;
-  using Base::Fx;
-  using Base::Lu;
-  using Base::Luu;
-  using Base::Lx;
-  using Base::Lxu;
-  using Base::Lxx;
-  using Base::r;
-  using Base::xout;
 
   template <template <typename Scalar> class Model>
   explicit DifferentialActionDataFreeFwdDynamicsExtForcesTpl(Model<Scalar>* const model)
@@ -148,6 +124,17 @@ struct DifferentialActionDataFreeFwdDynamicsExtForcesTpl : public DifferentialAc
   VectorXs u_drift;
   MatrixXs dtau_dx;
   VectorXs tmp_xstatic;
+
+  using Base::cost;
+  using Base::Fu;
+  using Base::Fx;
+  using Base::Lu;
+  using Base::Luu;
+  using Base::Lx;
+  using Base::Lxu;
+  using Base::Lxx;
+  using Base::r;
+  using Base::xout;
 };
 
 }  // namespace example
