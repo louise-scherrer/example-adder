@@ -66,12 +66,55 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calc(
   const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> q = x.head((long)state_->get_nq());
   const Eigen::VectorBlock<const Eigen::Ref<const VectorXs>, Eigen::Dynamic> v = x.tail((long)state_->get_nv());
 
+  // Expressing extforces_ (expressed in world frame at joint center) in the local frame of the joints
+  ForceAlignedVector localFrameExtForces = extforces_;
+  VectorXs testForce(6);
+  testForce(0) = 0.;
+  testForce(1) = 400.;
+  testForce(2) = 0.;
+  testForce(3) = 0.;
+  testForce(4) = 0.;
+  testForce(5) = 0.;
+  for (pinocchio::JointIndex i = 1; i < (pinocchio::JointIndex)pinocchio_.njoints; ++i) {
+  //TODO Should it start at i = 0 ? nope, cf state.hxx (crocoddyl file)
+    localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]);
+    
+    //localFrameExtForces[i] = pinocchio::ForceTpl<Scalar>(testForce);
+    //if (i == 1) {localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]);}
+    std::cout << "Inside DAM extforces_[" << i << "] = " << extforces_[i] << "vs local = " << localFrameExtForces[i] << std::endl;
+    std::cout << "oMi [" << i << "] = " << d->pinocchio.oMi[i] << std::endl;
+  }
+  //extforces_ = localFrameExtForces; // NOOOOO
+
   actuation_->calc(d->multibody.actuation, x, u);
 
   // Computing the dynamics using ABA or manually for armature case
   if (with_armature_) {
-    d->xout = pinocchio::aba(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau, extforces_);
+    d->xout = pinocchio::aba(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau, localFrameExtForces); // previously extforces_
+    //std::cout << "Inside DAM data.nle is" << d->pinocchio.nle << std::endl;
     pinocchio::updateGlobalPlacements(pinocchio_, d->pinocchio);
+    /*std::cout << "Inside DAM data.nle is" << d->pinocchio.nle << std::endl; // added for quick test on b(q,dq) vector
+    //std::cout << "Inside DAM data.f [0] = " << d->pinocchio.f[0] << std::endl;
+    //std::cout << "Inside DAM data.f [1] = " << d->pinocchio.f[1] << std::endl;
+    //std::cout << "Inside DAM data.f [2] = " << d->pinocchio.f[2] << std::endl;
+    //std::cout << "Inside DAM data.f [3] = " << d->pinocchio.f[3] << std::endl;
+    std::cout << "Inside DAM data.f [4] = " << d->pinocchio.f[4] << std::endl;
+    std::cout << "Inside DAM data.f [5] = " << d->pinocchio.f[5] << std::endl;
+    std::cout << "Inside DAM data.f [6] = " << d->pinocchio.f[6] << std::endl;
+    std::cout << "Inside DAM data.f [7] = " << d->pinocchio.f[7] << std::endl;
+    std::cout << "Inside DAM data.f [8] = " << d->pinocchio.f[8] << std::endl;
+    std::cout << "Inside DAM data.f [9] = " << d->pinocchio.f[9] << std::endl;
+    std::cout << "Inside DAM data.f [10] = " << d->pinocchio.f[10] << std::endl;
+    std::cout << "Inside DAM data.f [11] = " << d->pinocchio.f[11] << std::endl;
+    std::cout << "Inside DAM data.f [12] = " << d->pinocchio.f[12] << std::endl;
+    std::cout << "Inside DAM data.f [13] = " << d->pinocchio.f[13] << std::endl;
+    std::cout << "Inside DAM data.f [14] = " << d->pinocchio.f[14] << std::endl;
+    std::cout << "Inside DAM data.f [15] = " << d->pinocchio.f[15] << std::endl;
+    std::cout << "Inside DAM data.f [16] = " << d->pinocchio.f[16] << std::endl;
+    std::cout << "Inside DAM data.f [17] = " << d->pinocchio.f[17] << std::endl;
+    std::cout << "Inside DAM data.f [18] = " << d->pinocchio.f[18] << std::endl;
+    std::cout << "Inside DAM data.f [19] = " << d->pinocchio.f[19] << std::endl; */
+
   } else {
     pinocchio::computeAllTerms(pinocchio_, d->pinocchio, q, v); //TODO: adapt this to take extforces_ into account
     d->pinocchio.M.diagonal() += armature_;
@@ -106,12 +149,29 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calcDiff(
 
   Data* d = static_cast<Data*>(data.get());
 
+  // Expressing extforces_ (expressed in world frame at joint center) in the local frame of the joints
+  ForceAlignedVector localFrameExtForces = extforces_;
+  VectorXs testForce(6);
+  testForce(0) = 0.;
+  testForce(1) = 400.;
+  testForce(2) = 0.;
+  testForce(3) = 0.;
+  testForce(4) = 0.;
+  testForce(5) = 0.;
+  //pinocchio::ForceTpl<Scalar>(testForce, Vector3s::Zero())
+
+  for (pinocchio::JointIndex i = 1; i < (pinocchio::JointIndex)pinocchio_.njoints; ++i) {
+    localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]);
+    //localFrameExtForces[i] = pinocchio::ForceTpl<Scalar>(testForce);
+  }
+  //extforces_ = localFrameExtForces;
+
   actuation_->calcDiff(d->multibody.actuation, x, u);
 
   // Computing the dynamics derivatives
   if (with_armature_) {
     pinocchio::computeABADerivatives(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau,
-                                     extforces_, d->Fx.leftCols(nv),
+                                     localFrameExtForces, d->Fx.leftCols(nv),
                                      d->Fx.rightCols(nv), d->pinocchio.Minv);
     d->Fx.noalias() += d->pinocchio.Minv * d->multibody.actuation->dtau_dx;
     d->Fu.noalias() = d->pinocchio.Minv * d->multibody.actuation->dtau_du;
@@ -162,9 +222,24 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::quasiStatic(
   // Check the velocity input is zero
   assert_pretty(x.tail((long)state_->get_nv()).isZero(), "The velocity input should be zero for quasi-static to work.");
 
+  // Expressing extforces_ (expressed in world frame at joint center) in the local frame of the joints
+  ForceAlignedVector localFrameExtForces = extforces_;
+  VectorXs testForce(6);
+  testForce(0) = 0.;
+  testForce(1) = 400.;
+  testForce(2) = 0.;
+  testForce(3) = 0.;
+  testForce(4) = 0.;
+  testForce(5) = 0.;
+  for (pinocchio::JointIndex i = 1; i < (pinocchio::JointIndex)pinocchio_.njoints; ++i) {
+    localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]);
+    //localFrameExtForces[i] = pinocchio::ForceTpl<Scalar>(testForce);
+  }
+  //extforces_ = localFrameExtForces;
+
   d->pinocchio.tau =
       pinocchio::rnea(pinocchio_, d->pinocchio, q, VectorXs::Zero((long)state_->get_nv()),
-                      VectorXs::Zero((long)state_->get_nv()), extforces_);
+                      VectorXs::Zero((long)state_->get_nv()), localFrameExtForces);
 
   d->tmp_xstatic.head((long)state_->get_nq()) = q;
   actuation_->calc(d->multibody.actuation, d->tmp_xstatic, VectorXs::Zero((long)nu_));
