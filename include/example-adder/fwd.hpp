@@ -12,6 +12,11 @@ namespace gepetto {
     typedef DifferentialActionDataFreeFwdDynamicsExtForcesTpl<double> DifferentialActionDataFreeFwdDynamicsExtForces;
     typedef DifferentialActionModelFreeFwdDynamicsExtForcesTpl<double> DifferentialActionModelFreeFwdDynamicsExtForces;
     typedef pinocchio::ForceTpl<double> Force;
+    
+    template <typename Scalar>
+      class CostModelControlPNormTpl;
+
+    typedef CostModelControlPNormTpl<double> CostModelControlPNorm;
 
   }
 }

@@ -6,6 +6,9 @@ set(PROJECT_NAME example-adder)
 set(PROJECT_DESCRIPTION "This is an example project, to show how to use Gepetto's tools")
 set(PROJECT_URL https://gitlab.laas.fr/${PROJECT_NAMESPACE}/${PROJECT_NAME})
 
+# Disable -Werror on Unix for now.
+SET(CXX_DISABLE_WERROR True)
+
 # Project options
 option(BUILD_PYTHON_INTERFACE "Build the python binding" ON)
 option(INSTALL_PYTHON_INTERFACE_ONLY "Install *ONLY* the python bindings" OFF)
@@ -41,6 +44,7 @@ set(${PROJECT_NAME}_HEADERS
   include/${PROJECT_NAME}/fwd.hpp
   include/${PROJECT_NAME}/croco.hpp
   include/${PROJECT_NAME}/ext-forces.hpp
+  include/${PROJECT_NAME}/cost_control_p_norm.hpp
   include/${PROJECT_NAME}/gepadd.hpp
   include/${PROJECT_NAME}/python.hpp
   )

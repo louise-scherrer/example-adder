@@ -10,6 +10,7 @@ namespace example {
 void exposeExampleAdder();
 void exposeActionUniEx();
 void exposeDifferentialActionFreeFwdDynamicsExtForces();
+void exposeCostControlPNorm();
 }  // namespace example
 }  // namespace gepetto
 
