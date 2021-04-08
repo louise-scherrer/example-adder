@@ -68,15 +68,19 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calc(
 
   // Expressing extforces_ (expressed in world frame at joint center) in the local frame of the joints
   ForceAlignedVector localFrameExtForces = extforces_;
-  VectorXs testForce(6);
+  /* VectorXs testForce(6);
   testForce(0) = 0.;
   testForce(1) = 400.;
   testForce(2) = 0.;
   testForce(3) = 0.;
   testForce(4) = 0.;
-  testForce(5) = 0.;
+  testForce(5) = 0.;*/
+  VectorXs forceJointCenter(6);
   for (pinocchio::JointIndex i = 1; i < (pinocchio::JointIndex)pinocchio_.njoints; ++i) {
   //TODO Should it start at i = 0 ? nope, cf state.hxx (crocoddyl file)
+    //forceJointCenter(0) = extforces_[i]
+    //blable = pinocchio::ForceTpl<Scalar>(extforces_[i].linear(), d->pinocchio.oMi[i].translation() - d->pinocchio.oMi[i].translation()).cross(extforces_[i].angular()))
+    //wrench.tail<3>() - pRef.cross(wrench.head<3>());
     localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]);
     
     //localFrameExtForces[i] = pinocchio::ForceTpl<Scalar>(testForce);
@@ -90,7 +94,7 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calc(
 
   // Computing the dynamics using ABA or manually for armature case
   if (with_armature_) {
-    d->xout = pinocchio::aba(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau, localFrameExtForces); // previously extforces_
+    d->xout = pinocchio::aba(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau, extforces_); // previously extforces_
     //std::cout << "Inside DAM data.nle is" << d->pinocchio.nle << std::endl;
     pinocchio::updateGlobalPlacements(pinocchio_, d->pinocchio);
     /*std::cout << "Inside DAM data.nle is" << d->pinocchio.nle << std::endl; // added for quick test on b(q,dq) vector
@@ -171,7 +175,7 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calcDiff(
   // Computing the dynamics derivatives
   if (with_armature_) {
     pinocchio::computeABADerivatives(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau,
-                                     localFrameExtForces, d->Fx.leftCols(nv),
+                                     extforces_, d->Fx.leftCols(nv),
                                      d->Fx.rightCols(nv), d->pinocchio.Minv);
     d->Fx.noalias() += d->pinocchio.Minv * d->multibody.actuation->dtau_dx;
     d->Fu.noalias() = d->pinocchio.Minv * d->multibody.actuation->dtau_du;
@@ -239,7 +243,7 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::quasiStatic(
 
   d->pinocchio.tau =
       pinocchio::rnea(pinocchio_, d->pinocchio, q, VectorXs::Zero((long)state_->get_nv()),
-                      VectorXs::Zero((long)state_->get_nv()), localFrameExtForces);
+                      VectorXs::Zero((long)state_->get_nv()), extforces_);
 
   d->tmp_xstatic.head((long)state_->get_nq()) = q;
   actuation_->calc(d->multibody.actuation, d->tmp_xstatic, VectorXs::Zero((long)nu_));
