@@ -17,6 +17,7 @@
 #include <pinocchio/algorithm/rnea-derivatives.hpp>
 #include <pinocchio/algorithm/compute-all-terms.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
+#include <pinocchio/algorithm/kinematics-derivatives.hpp> //added for computeJointKinematicHessians
 #include <pinocchio/algorithm/jacobian.hpp>
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/cholesky.hpp>
@@ -81,12 +82,13 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calc(
     //forceJointCenter(0) = extforces_[i]
     //blable = pinocchio::ForceTpl<Scalar>(extforces_[i].linear(), d->pinocchio.oMi[i].translation() - d->pinocchio.oMi[i].translation()).cross(extforces_[i].angular()))
     //wrench.tail<3>() - pRef.cross(wrench.head<3>());
-    localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]);
+    localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]); // TODO check whether updtaeGlobalPlacemnts needed here
     
     //localFrameExtForces[i] = pinocchio::ForceTpl<Scalar>(testForce);
     //if (i == 1) {localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]);}
-    std::cout << "Inside DAM extforces_[" << i << "] = " << extforces_[i] << "vs local = " << localFrameExtForces[i] << std::endl;
-    std::cout << "oMi [" << i << "] = " << d->pinocchio.oMi[i] << std::endl;
+    
+    /*std::cout << "Inside DAM extforces_[" << i << "] = " << extforces_[i] << "vs local = " << localFrameExtForces[i] << std::endl;
+    std::cout << "oMi [" << i << "] = " << d->pinocchio.oMi[i] << std::endl;*/
   }
   //extforces_ = localFrameExtForces; // NOOOOO
 
@@ -94,7 +96,7 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calc(
 
   // Computing the dynamics using ABA or manually for armature case
   if (with_armature_) {
-    d->xout = pinocchio::aba(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau, extforces_); // previously extforces_
+    d->xout = pinocchio::aba(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau, localFrameExtForces); // previously extforces_
     //std::cout << "Inside DAM data.nle is" << d->pinocchio.nle << std::endl;
     pinocchio::updateGlobalPlacements(pinocchio_, d->pinocchio);
     /*std::cout << "Inside DAM data.nle is" << d->pinocchio.nle << std::endl; // added for quick test on b(q,dq) vector
@@ -165,7 +167,7 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calcDiff(
   //pinocchio::ForceTpl<Scalar>(testForce, Vector3s::Zero())
 
   for (pinocchio::JointIndex i = 1; i < (pinocchio::JointIndex)pinocchio_.njoints; ++i) {
-    localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]);
+    localFrameExtForces[i] = d->pinocchio.oMi[i].actInv(extforces_[i]); //TODO check it is still needed
     //localFrameExtForces[i] = pinocchio::ForceTpl<Scalar>(testForce);
   }
   //extforces_ = localFrameExtForces;
@@ -175,9 +177,22 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calcDiff(
   // Computing the dynamics derivatives
   if (with_armature_) {
     pinocchio::computeABADerivatives(pinocchio_, d->pinocchio, q, v, d->multibody.actuation->tau,
-                                     extforces_, d->Fx.leftCols(nv),
-                                     d->Fx.rightCols(nv), d->pinocchio.Minv);
+                                     localFrameExtForces, d->Fx.leftCols(nv),
+                                     d->Fx.rightCols(nv), d->pinocchio.Minv); // previously extforces_
     d->Fx.noalias() += d->pinocchio.Minv * d->multibody.actuation->dtau_dx;
+    // Adding dJ/dq.Fext term
+    //TODO check J has been computed first
+    pinocchio::computeJointKinematicHessians(pinocchio_, d->pinocchio); //TODO check syntax
+    for (pinocchio::JointIndex i = 1; i < (pinocchio::JointIndex)pinocchio_.njoints; ++i) {
+      Eigen::Tensor<Scalar,3> kinematic_hessian_local = getJointKinematicHessian(pinocchio_, d->pinocchio, i, pinocchio::LOCAL);
+      pinocchio::JointIndex offset = nv * 6;
+      Eigen::Map<MatrixXs> dJi_dq(kinematic_hessian_local.data() + i*offset, 6, nv); // MatrixXs if 6s not recognized
+      //TODO check this + i*offset thing
+      std::cout <<"extforces_[" << i << "] = " << extforces_[i].toVector() << std::endl;
+      std::cout << "dJ" << i << "_dq = " << dJi_dq << std::endl;
+      d->Fx.rightCols(nv) += dJi_dq.transpose() * extforces_[i].toVector(); // TODO check 	+ is it extforces_ or localFrameExtForces?
+    }
+    // End adding dJ/dq.Fext term
     d->Fu.noalias() = d->pinocchio.Minv * d->multibody.actuation->dtau_du;
   } else { //TODO: adapt this to take extforces_ into account
     pinocchio::computeRNEADerivatives(pinocchio_, d->pinocchio, q, v, d->xout);
