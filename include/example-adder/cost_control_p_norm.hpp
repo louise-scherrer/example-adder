@@ -52,6 +52,7 @@ class CostModelControlPNormTpl : public CostModelAbstractTpl<_Scalar> {
   typedef ActivationModelAbstractTpl<Scalar> ActivationModelAbstract; // It is kept becaus cost-sum.hxx is using its nr
   // parameter, but not used in the computations, p-norm used instead
   typedef typename MathBase::VectorXs VectorXs;
+  typedef typename MathBase::MatrixXs MatrixXs;
 
   /**
    * @brief Initialize the control cost model
@@ -59,9 +60,10 @@ class CostModelControlPNormTpl : public CostModelAbstractTpl<_Scalar> {
    * The default `nu` value is obtained from `StateAbstractTpl::get_nv()`.
    *
    * @param[in] state       State of the multibody system
+   * @param[in] nu          Dimension of the control vector
    * @param[in] p           Value of the p-norm
    */
-  CostModelControlPNormTpl(boost::shared_ptr<typename Base::StateAbstract> state,
+  CostModelControlPNormTpl(boost::shared_ptr<typename Base::StateAbstract> state, const std::size_t& nu,
                       const std::size_t& p);
 
   /**

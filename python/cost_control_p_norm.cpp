@@ -26,10 +26,11 @@ void exposeCostControlPNorm() {
       "CostModelControlPNorm",
       "This cost function defines a residual vector as the p-norm of the control vector ie r = (sum_over_i(u_i^p))^(1/p), "
       "with u the current control vector.",
-      bp::init<boost::shared_ptr<StateAbstract>, const std::size_t&>(
-          bp::args("self", "state", "p"),
+      bp::init<boost::shared_ptr<StateAbstract>, const std::size_t&, const std::size_t&>(
+          bp::args("self", "state", "nu", "p"),
           "Initialize the cost model on the p-norm of the control vector.\n\n"
           ":param state: state description\n"
+          ":param nu: dimension of control vector\n"
           ":param p: integer value of p for the p-norm"))
       .def<void (CostModelControlPNorm::*)(const boost::shared_ptr<CostDataAbstract>&,
                                       const Eigen::Ref<const Eigen::VectorXd>&,
