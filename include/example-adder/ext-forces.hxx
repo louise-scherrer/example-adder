@@ -129,6 +129,7 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calc(
     pinocchio::cholesky::computeMinv(pinocchio_, d->pinocchio, d->Minv);
     d->u_drift = d->multibody.actuation->tau - d->pinocchio.nle;
     d->xout.noalias() = d->Minv * d->u_drift;
+    //std::cout << "inside else ie with_armature_ = False" << std::endl;
   }
 
   // Computing the cost value and residuals
@@ -181,19 +182,27 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calcDiff(
                                      d->Fx.rightCols(nv), d->pinocchio.Minv); // previously extforces_
     d->Fx.noalias() += d->pinocchio.Minv * d->multibody.actuation->dtau_dx;
     // Adding dJ/dq.Fext term
-    //TODO check J has been computed first
+    //TODO check J has been computed first, it is done in calc, so all good ?
     pinocchio::computeJointKinematicHessians(pinocchio_, d->pinocchio); //TODO check syntax
     for (pinocchio::JointIndex i = 1; i < (pinocchio::JointIndex)pinocchio_.njoints; ++i) {
-      Eigen::Tensor<Scalar,3> kinematic_hessian_local = getJointKinematicHessian(pinocchio_, d->pinocchio, i, pinocchio::LOCAL);
+      Eigen::Tensor<Scalar,3> kinematic_hessian_local = getJointKinematicHessian(pinocchio_, d->pinocchio, i, pinocchio::WORLD); // with WORLD arm_manip works, LOCAL too, dunno why
       pinocchio::JointIndex offset = nv * 6;
       Eigen::Map<MatrixXs> dJi_dq(kinematic_hessian_local.data() + i*offset, 6, nv); // MatrixXs if 6s not recognized
       //TODO check this + i*offset thing
-      std::cout <<"extforces_[" << i << "] = " << extforces_[i].toVector() << std::endl;
-      std::cout << "dJ" << i << "_dq = " << dJi_dq << std::endl;
-      d->Fx.rightCols(nv) += dJi_dq.transpose() * extforces_[i].toVector(); // TODO check 	+ is it extforces_ or localFrameExtForces?
+      //std::cout <<"extforces_[" << i << "] = " << extforces_[i].toVector() << std::endl;
+      //std::cout << "dJ" << i << "_dq = " << dJi_dq << std::endl;
+      d->Fx.rightCols(nv) += d->pinocchio.Minv * dJi_dq.transpose() * extforces_[i].toVector(); // TODO check 	+ is it extforces_ or localFrameExtForces?
     }
     // End adding dJ/dq.Fext term
-    d->Fu.noalias() = d->pinocchio.Minv * d->multibody.actuation->dtau_du;
+    // Adapting Minv to our free-flyer type of robot
+    MatrixXs Selection = MatrixXs::Identity(nv, nv);
+    Selection.leftCols(long(6)).fill((Scalar)0.);
+    std::cout <<"Selection = " << Selection << std::endl;
+    //Selection = MatrixXs::Zero(nv, nv);
+    //Selection.diagonal(-(nv - long(6))).fill((Scalar)1.);
+    //std::cout <<"Selection = " << Selection << std::endl;
+    d->Fu.noalias() = (Selection * d->pinocchio.Minv * Selection) * d->multibody.actuation->dtau_du;
+    std::cout <<"Selection *Minv * Selection = " << (Selection * d->pinocchio.Minv * Selection) << std::endl;
   } else { //TODO: adapt this to take extforces_ into account
     pinocchio::computeRNEADerivatives(pinocchio_, d->pinocchio, q, v, d->xout);
     d->dtau_dx.leftCols(nv) = d->multibody.actuation->dtau_dx.leftCols(nv) - d->pinocchio.dtau_dq;
@@ -204,7 +213,7 @@ void DifferentialActionModelFreeFwdDynamicsExtForcesTpl<Scalar>::calcDiff(
 
   // Computing the cost derivatives
   costs_->calcDiff(d->costs, x, u);
-}
+} 
 
 template <typename Scalar>
 boost::shared_ptr<DifferentialActionDataAbstractTpl<Scalar> >
